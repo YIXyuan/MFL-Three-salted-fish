@@ -1,0 +1,223 @@
+================================================================================
+MFL FPGA 侧各模块代码说明
+================================================================================
+适用位流 : prod（AXI_wrapper.sbit，md5 1a1847ed…，2026-10-29 22:01 综合，板上在跑）
+代码位置 : 01_project/Kosmo2_mfl_cnn_accel/rtl/M2..M9（26 个 .v）
+          + 01_project/mem/（权重/层配置 ROM，综合期 $readmemh 加载）
+工程     : Kosmo2_mfl_cnn_accel（PDS 2025.2，PG2K100-6IMBG400，PLL 输出 50 MHz）
+状态     : 全链 TB PASS + 板上验证（单帧 5.76s / 双帧 / 软复位 / 114 张批量端到端）
+
+--------------------------------------------------------------------------------
+0. 数据流总图（谁连谁）
+--------------------------------------------------------------------------------
+
+            ARM(A53 Linux)
+              │ DDR 邮箱 0x301000（8 字：IN/OUT/SLOT/CTRL/STATUS/LAYER/VERSION/RESET）
+              ▼
+  ┌─ kosmo2_mailbox_adapter ──轮询/开锁/pending/软复位──┐
+  │       │（单拍 16B 读写命令）                         │
+  │  kosmo2_mailbox_axi_master                          │ M8/M2 在 rst_n_core
+  │       │                                             │ （软复位域）
+  │  kosmo2_axi_mux_2to1 ◄── M2 DMA 读/写主 ◄── M8 ctrl_fsm
+  │       │（数据面 + 控制面 2:1）        （含 M6/M7/边界引擎）
+  │       ▼
+  │  kosmo2_ddr_access_top ── kosmo2_pu_ddr_bridge ──► SPS0 ──► PU/DDR
+  │  （内含 2:1 仲裁 + BIST，rst_n_sys 域，不被软复位）
+  └─ 板级 wrapper kosmo2_m9_board_top（LED 映射 + 参数覆盖）
+
+帧流程：ARM 写 IN(1,474,560B) → CTRL=1 → M8 依次跑 10 层（每层 = M6 引擎一次
+计算 + M8 边界引擎做 ReLU/池化/换挡）→ OUT 96×15×32=46,080B → STATUS=2。
+层间大缓冲固定用 REBUF_A=0x500000 / REBUF_B=0xD00000（乒乓），IN=0x302000 /
+IN slot1=0x1500000 / OUT=0x470000。
+
+--------------------------------------------------------------------------------
+1. 板级顶层（LED 与参数）
+--------------------------------------------------------------------------------
+
+M9/kosmo2_m9_board_top_v1_0.v —— 板级 wrapper（真正的 FPGA 顶层经 block_editor
+    AXI_wrapper.v 例化它）。三件事：
+    ① 对 kosmo2_m9_top 例化时覆盖参数（生产值）：
+       C_EXT_WORDS_EN=1（VERSION/RESET 启用）、C_POLL_CYC=50000（1ms @50MHz）、
+       C_DRAIN_CYC=25000000、C_DONE_HOLD_CYC=25000000（各 500ms）、
+       C_BIST_BASE=0xC80000、C_REBUF_A/B=0x500000/0xD00000；
+    ② LED 映射（生产语义）：G14=M8 busy / E18=M8 done（单拍脉冲，肉眼不可见）/
+       E19=M8 err / F16=BIST done（wrapper 锁存脉冲）/ F17=BIST pass；
+       引脚约束 2.5V LVCMOS25（.fdc）；
+    ③ SPS0 口全部连 PU IP，不上芯片引脚。
+
+--------------------------------------------------------------------------------
+2. M9 —— 控制面（DDR 邮箱协议 + 总线复用）
+--------------------------------------------------------------------------------
+
+M9/kosmo2_m9_top_v1_0.v —— 生产顶层：把适配器、邮箱 AXI 主、2:1 mux、M8、M2、
+    ddr_access_top 接起来。要点：
+    · 复位域：rst_n_sys（PU_SPS0_RESETN 同步）给 ddr_access_top/适配器；
+      rst_n_core（软复位产生）给 M8/M2/邮箱主/mux，绝不碰 ddr_access_top；
+    · 上电防撞：mbox_en 等 bist_done（兜底 10ms）才放开适配器——避免首次邮箱
+      轮询和 BIST 抢 DDR（dbg4 时代"偶发全亮门不开"的根因之一）；
+    · BIST 复位后第 16 拍自动跑 0xC80000 64KiB 读写回；
+    · 调试口 o_dbg_*（mux sel / AR 握手 / R 返回 / 事务错）保留，板级悬空。
+
+M9/kosmo2_mailbox_adapter_v1_0.v —— 邮箱协议状态机（核心控制件）。
+    · 上电门控（方案 B）：S_WAIT_EN 只读邮箱、一个字节都不写，直到看到有效
+      IN/OUT（IN∈{0x302000..0x46A000, 0x1500000..0x1700000}，OUT∈{0x470000..,
+      scratch}）才 boot 写 VERSION=0x20261018、STATUS=0——上电绝不撞 u-boot 暂存区；
+    · 1ms 轮询两块：先 block0(IN/OUT/CTRL) 再 block1(LAYER/RESET)；
+    · 受理：CTRL=1 且地址合法 → 清 CTRL、写 STATUS=1、启动 M8；忙中再来 START
+      进 1 深 pending（结果归属靠 C_DONE_HOLD：done 后 STATUS/OUT 保持 500ms 再
+      启动 pending 帧）；pending 满再收 → STATUS=0x6；
+    · 软复位 RESET(+0x1C)==1（整字比较，防 u-boot 残留误触发）：abort → 排空
+      ≤500ms → 本地复位 → 写 STATUS(0/6) → 最后清 RESET；干净复位回 S_WAIT_EN；
+    · LAYER 语义：低 8 位 0xFF 特判全链；0x0A~0x0F→9；≥0x10 取低 4 位；bit8/9
+      =跳 ReLU/跳池化（始终生效）；STATUS 只由 FPGA 写（0/1/2/6）。
+
+M9/kosmo2_mailbox_axi_master_v1_0.v —— 邮箱专用 AXI 主：128bit 单拍（arlen/awlen=0）
+    单笔 outstanding，命令-响应接口（cmd_op/addr/wdata/wstrb → rsp_valid/rdata/err）。
+    超时 3ms@50MHz：先放弃本地事务，再进 S_DRAIN 保持 rready/bready 把迟到的 R/B
+    收干净——AXI4 无 master abort，不收会把 2:1 mux 的 rd_out 和仲裁器 r_busy 永久
+    挂死（dbg4→dbg5 的第二个根因）。
+
+M9/kosmo2_axi_mux_2to1_v1_0.v —— 用户 AXI4 口 2:1 选择器（数据 DMA / 邮箱主）。
+    单 owner、burst 粒度切换：切走前要求当前 owner 无 outstanding 且无未握手的
+    新请求（数据侧 data_no_req，邮箱侧 !mb_req——owner 保持修复，2026-10-29 实机
+    定位："门永远不开"的根因）；outstanding 用"握手后的下一态"判断，防 AR 与 R
+    被拆到两个 owner；非选中侧 valid/ready 全部强制 0（防幻影握手）。
+
+--------------------------------------------------------------------------------
+3. M8 —— 层序控制与层间边界
+--------------------------------------------------------------------------------
+
+M8/kosmo2_ctrl_fsm_v1_0.v —— 层序控制器 = 层配置 ROM + 层序 FSM + M6/M7 例化 +
+    边界引擎调度。要点：
+    · 每层 128bit 配置（in/out_ch、H/W、bank 号、relu/pool/bnd、McB、缓冲选择）；
+    · 缓冲策略：IN → REBUF A/B 乒乓 → 下一层 → …；末层边界直接写 OUT；
+      无边界层（conv02/06）下一层直接读上一层输出缓冲；
+    · LAYER 解析（停止层/跳 ReLU/跳池化）在这里落地；abort 在层边界生效；
+    · done 前等 M2 busy 回 0 才收尾；DMA 单拍命令带 pending 保持（M2 排空期
+      不丢命令，坑 #29）。
+
+M8/kosmo2_layer_cfg_rom_v1_0.v —— 10 层 × 128bit 配置 ROM，$readmemh 初始化
+    （mem/layer_cfg.mem，由 tools/gen_m8_cfg.py 生成；内容与 quant_export 自动核对）。
+
+M8/kosmo2_boundary_v1_0.v —— 层间边界引擎（NCHW 逐通道流）：可选 2×2s2 MaxPool
+    （signed max，含 -128）+ 可选 McB 再量化（F=24）+ 恒等拷贝三选一。
+    已知问题（仅调试导出路径）：恒等拷贝 rebuf→OUT 把负字节压成 0x80（V2 取证，
+    疑 PDS 对 mc=2^24 常量 mux 的综合优化）；生产数据链（post-ReLU/post-Pool）
+    不受影响，修复待办。
+
+--------------------------------------------------------------------------------
+4. M7 —— 片上参数仓库（纯只读）
+--------------------------------------------------------------------------------
+
+M7/kosmo2_wram_bank_v1_0.v —— 10 个 bank（conv00..conv09）参数仓库：4,635 列
+    权重 + bias/Mc 整行，全部片上常驻。对外 w_bank[3:0]+w_col_idx[9:0] →
+    w_col[2047:0]（2 拍延迟，与 M3 对齐）；bias_line/mc_line[8191:0] 整行。
+
+M7/kosmo2_wram_bank_layer_v1_0.v —— 单层 bank：权重列 ROM（$readmemh，
+    mem/convXX_w.mem，列排布 t=(ky*3+kw)*in_ch+cin，每列按 out_ch 截断补零）；
+    bias/Mc 透传。
+
+M7/kosmo2_wram_bank_const_v1_0.v —— bias/Mc 常量模块（生成的 RTL 常量）。
+    原因：PDS 不支持"常量地址读"的 $readmemh ROM（会被优化掉，坑 #23）。
+    PDS 实测 M7 占 118.5/144 DRM（十层权重全部驻留，跑帧期间零加载）。
+
+--------------------------------------------------------------------------------
+5. M6 —— 单层卷积引擎
+--------------------------------------------------------------------------------
+
+M6/kosmo2_pe_layer_v1_0.v —— 单层卷积的完整调度：FSM + 例化 M3 行缓冲 + M4
+    乘加 + M5 requant。要点：
+    · 拍序：PH = 9·in_ch + out_ch + 6；ph0 acc_ld → ph1..W_p 发 M3 地址与 M7 列号
+      → ph3..W_p+2 acc_en → 之后按 out_ch 读出 → 写回行缓冲；
+    · 行序纪律：预载 row0/1 后按 {PIX(o) → 写行 o → 装 row o+2} 循环——装 row o+2
+      必须在 PIX(o) 之后（bank=(o+2)%3 正是下一步窗口要读的，先装会覆盖）；
+    · 输出按通道 gather 成 NCHW 段（addr = base + c*H*W + y*W，长 W）；
+    · requant 的 mc_sel 用当前拍 c_read_c 选择并提前一拍寄存（150MHz 时序修复）；
+    · 位宽：cfg_w/行计数 11bit（W=1024 需要 11 位，坑 #22）；凡乘法进拼接/下标
+      一律显式加宽（坑 #21）。
+
+--------------------------------------------------------------------------------
+6. M5 / M4 / M3 —— 单层引擎的三个计算件
+--------------------------------------------------------------------------------
+
+M5/kosmo2_requant_v1_0.v —— 再量化 + ReLU 融合：int32 累加 → q = clamp((acc·Mc +
+    2^30)>>>31, -128,127) → relu_en 时置 0。fshift 是输入（M8 配置驱动，固定 31，
+    McB 第二遍走边界引擎的 F=24——2^31 会溢出 int32，坑 #11）。
+
+M5/kosmo2_maxpool_v1_0.v —— 2×2 s2 最大池化（signed 比较，专测过 -128）；
+    conv01/03/05/07/09 后各一次（v2 口径共 5 次）。
+
+M4/kosmo2_mac_array_v1_0.v —— 256 个 int8×int8→int32 乘加单元。拍序
+    acc_ld → acc_en×9·in_ch → acc_rd+c_read；bias 走独立 8192bit 宽口；
+    乘两端必须 $signed，64bit 全宽保留再移位（坑 #13）。
+
+M3/kosmo2_line_buffer_v1_0.v —— 3-bank 行缓冲：跨步装入（单位=一个通道行，
+    NCHW 连续 W 字节）+ 列 padding + 3×3 窗口随机读，固定 2 拍读延迟。
+    bank 序号（ld_bank=y%3 等）与行有效性位图由 M6 算好下发；约束 W*C≤16KB。
+
+--------------------------------------------------------------------------------
+7. M2 —— 数据面 DMA
+--------------------------------------------------------------------------------
+
+M2/kosmo2_axi_dma_rd_v1_0.v —— AXI4-Full 读主：DDR → AXI-Stream。自动 4KB 切割
+    （arsize=4/INCR，跨 4KB 拆 burst）、随机反压、流出口寄存（坑 #8/#14/#16：
+    读主 busy 回落=最后一拍已被取走，调度必须先武装写主再发读命令）。
+
+M2/kosmo2_axi_dma_wr_v1_0.v —— AXI4-Full 写主：AXI-Stream → DDR。严格
+    AW→W→B 顺序；s_ready 捕获必须以 s_valid 为前提（防"幻影拍"）；wstrb 恒
+    全 1（整 beat 写）——因此不能用它写邮箱（会打坏相邻字），邮箱写必须走
+    邮箱主的 32bit WSTRB。
+
+--------------------------------------------------------------------------------
+8. M2/pu_ddr_bridge —— SPS0 访问桥（外部复用 IP，Kosmo2_IP 库）
+--------------------------------------------------------------------------------
+
+kosmo2_ddr_access_top_v1_0.v —— DDR 访问子系统封装 = 2:1 仲裁（用户口 M0 高
+    优先级 / 内部 BIST M1）+ SPS 访问桥 + BIST 控制。本设计里 M0 接 2:1 mux，
+    BIST 上电自检 0xC80000 64KiB（done/pass 引出到板级 LED）。
+    复位例外：rstn_ui 只接系统复位域，软复位不得波及（否则 mux/mbox 的迟到
+    响应无处归宿）。
+
+kosmo2_pu_ddr_bridge_v1_0.v —— 用户 AXI4(128bit) ↔ SPS0 桥。C_ASYNC=0 同步
+    模式：五通道纯组合直通（SPS0_CLK=同一 PLL 输出）；补齐 size=128bit/INCR/
+    lock/cache/prot/qos 等侧带信号。
+
+kosmo2_axi_arb2_v1_0.v —— 内部 2:1 仲裁（M0 用户 / M1 BIST）：事务级不抢占，
+    r_busy/r_own、w_busy/w_own 跟踪，响应按 owner 回送。注意：它同样会被
+    "迟到响应没人取"挂死——这正是邮箱主必须 S_DRAIN 的原因。
+
+kosmo2_async_fifo_v1_0.v / kosmo2_rst_sync_v1_0.v —— 异步 FIFO 与复位同步器
+    （C_ASYNC=0 时实例保留但不走数据；异步模式备用）。
+
+kosmo2_ddr_bist_v1_0.v —— DDR BIST：写确定性图案（beat = {seed^idx, seed+idx,
+    seed-idx, seed^~idx}）→ 回读比对；板上 CPU 侧可用 bist_check 逐拍复核
+    （10-29 实测 4096/4096 全对——写地址/lane 顺序的关键证据）。
+
+kosmo2_frame_reader_v1_0.v / kosmo2_ddr_flag_writer_v1_0.v —— 库自带示例件，
+    本工程未例化（源码在库中，留档）。
+
+--------------------------------------------------------------------------------
+9. 未在生产位流中的模块（留档，勿混用）
+--------------------------------------------------------------------------------
+
+· kosmo2_ctrl_regs（M1 AXI-Lite 调试寄存器）与 kosmo2_m1_upm_test（M1↔UPM0
+  可行性）：仅调试位流用；生产邮箱协议与其偏移/语义不同（M1 是 AXI-Lite
+  从机 + IRQ，邮箱是 DDR 轮询），两套控制面不得混用。
+· ip/kosmo2_bringup_test（M2.5 冒烟顶层）：历史 bring-up 用，已被 M9 取代。
+· 各 IP 的 sim/（TB + kosmo2_pu_sps_model）：行为模型注意两点——SPS 模型
+  内存按 addr>>4 索引只有 16MB 窗口（仿真 BIST 基址要避开 IN/OUT 区）；
+  arready=!rd_busy 组合恒高，测不出 valid-hold 类 bug（mux 坑 #36 的教训）。
+
+--------------------------------------------------------------------------------
+10. mem/ —— 综合期加载的 ROM（01_project/mem/）
+--------------------------------------------------------------------------------
+
+conv00..09_w.mem   十层权重列（gen_m7_wram.py 生成，$readmemh 加载；
+                   加载失败会被 PDS 静默优化成 0——综合日志必须查 "Loading
+                   memory data from"，见坑 #23）
+layer_cfg.mem      10 层 × 128bit 层配置（gen_m8_cfg.py 生成）
+convXX_b/mc.mem    bias/Mc 数据源（生成 wram_bank_const 的输入；PDS 不直接读，
+                   值已展开成常量 RTL）
+manifest.json      生成器产物核对（CRC/列数）
+crc.hex/spot.hex   每层 CRC 与抽查向量（M7 TB 用）
+

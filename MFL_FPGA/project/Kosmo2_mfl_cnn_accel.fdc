@@ -1,0 +1,27 @@
+create_clock -name {sys_clk} [get_ports {sys_clk}] -period {20.000} -waveform {0.000 10.000}
+
+define_attribute {p:led_bist_done} {PAP_IO_DIRECTION} {OUTPUT}
+define_attribute {p:led_bist_done} {PAP_IO_LOC} {F16}
+define_attribute {p:led_bist_done} {PAP_IO_VCCIO} {2.5}
+define_attribute {p:led_bist_done} {PAP_IO_STANDARD} {LVCMOS25}
+define_attribute {p:led_bist_pass} {PAP_IO_DIRECTION} {OUTPUT}
+define_attribute {p:led_bist_pass} {PAP_IO_LOC} {F17}
+define_attribute {p:led_bist_pass} {PAP_IO_VCCIO} {2.5}
+define_attribute {p:led_bist_pass} {PAP_IO_STANDARD} {LVCMOS25}
+define_attribute {p:led_busy} {PAP_IO_DIRECTION} {OUTPUT}
+define_attribute {p:led_busy} {PAP_IO_LOC} {G14}
+define_attribute {p:led_busy} {PAP_IO_VCCIO} {2.5}
+define_attribute {p:led_busy} {PAP_IO_STANDARD} {LVCMOS25}
+define_attribute {p:led_done} {PAP_IO_DIRECTION} {OUTPUT}
+define_attribute {p:led_done} {PAP_IO_LOC} {E18}
+define_attribute {p:led_done} {PAP_IO_VCCIO} {2.5}
+define_attribute {p:led_done} {PAP_IO_STANDARD} {LVCMOS25}
+define_attribute {p:led_err} {PAP_IO_DIRECTION} {OUTPUT}
+define_attribute {p:led_err} {PAP_IO_LOC} {E19}
+define_attribute {p:led_err} {PAP_IO_VCCIO} {2.5}
+define_attribute {p:led_err} {PAP_IO_STANDARD} {LVCMOS25}
+define_attribute {p:sys_clk} {PAP_IO_DIRECTION} {INPUT}
+define_attribute {p:sys_clk} {PAP_IO_LOC} {T9}
+define_attribute {p:sys_clk} {PAP_IO_VCCIO} {3.3}
+define_attribute {p:sys_clk} {PAP_IO_STANDARD} {LVCMOS33}
+create_generated_clock -name {pll_clk_50m} -source [get_pins AXI_inst_i/pll_1_8_0/clkin1] [get_pins AXI_inst_i/pll_1_8_0/clkout0] -master_clock [get_clocks sys_clk] -multiply_by {1} -duty_cycle {50.000}

@@ -1,0 +1,14 @@
+//arch = PG2K100; split = false; format = BIN
+boot_image:
+{
+    [img_hash_sign] SHA256
+    [prim:datafile,load=0xfffc0000,entry=0xfffc0000] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/fsbl_candidates/sdbackup.elf
+    [prim:datafile,space=pa] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/AXI_wrapper_prod.sbit
+    [prim:datafile] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/uboot_orig.elf
+    [prim:datafile,load=0x06000000,entry=0x06000000] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/img3_kernel.bin
+    [prim:datafile,load=0x04000000,entry=0x04000000] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/img4_dtb.bin
+    [prim:datafile] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/bl31_orig.elf
+    [out_dir] C:/Users/21889/Desktop/Kosmo2_MES2K100/syn/boot_pack/out_prod
+
+}
+
