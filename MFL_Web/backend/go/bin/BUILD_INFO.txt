@@ -1,0 +1,13 @@
+build_at:   2026-10-30 23:58:42
+git_head:   c38ec84
+code_head:  c38ec84
+artifacts:  mflweb(.exe) / mflweb-linux-arm64 / mflweb-board.tar.gz
+contains:   POST /api/nodes/online, GET+POST /api/progress, GET /api/events/history
+note:       判据看 code_head——它落后于该路径集的最新提交时才需重编；
+            git_head 仅作人工回溯（纯文档提交不影响包内容）
+md5 判据:   本脚本带 -buildvcs=false，同源码重编字节一致，md5 可当包身份；
+            若去掉该参数，二进制会随 git 状态变化（vcs.* 入包），md5 不可比。
+            tar.gz 自身 md5 每次构建都不同（内含 build_at 与构建时刻的 mtime），
+            核对包内容请解包比对 md5_arm64，勿以 tar 的 md5 作判据
+md5_exe:    215e7415e7ea98b6e6776cab4d3c3bdd
+md5_arm64:  5b4f9e77f91230ecfee5fab7e2db763a
