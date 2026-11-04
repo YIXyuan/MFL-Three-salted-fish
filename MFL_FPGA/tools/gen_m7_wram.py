@@ -2,7 +2,7 @@
 """
 gen_m7_wram.py -- M7 wram_bank 参数仓库生成器（唯一合法来源，禁止手抄）
 
-输入（v2 quant_export，HANDOFF §5.1 唯一来源）:
+输入（v2 quant_export 为唯一来源）:
   quant_export/quant_params.json
   quant_export/weights_int8/convXX_w_int8.npy   (OC, IC, 3, 3) int8, BN 已折叠
   quant_export/weights_int8/convXX_b_int32.npy  (OC,) int32

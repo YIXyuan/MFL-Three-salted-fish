@@ -1,0 +1,616 @@
+{
+  "model": "...\\mfl2d_v2\\output\\models\\best_model.pt",
+  "profile": [
+    16,
+    32,
+    64,
+    96,
+    96
+  ],
+  "layer_names": [
+    "conv00",
+    "conv01",
+    "conv02",
+    "conv03",
+    "conv04",
+    "conv05",
+    "conv06",
+    "conv07",
+    "conv08",
+    "conv09"
+  ],
+  "input_scale": 0.007874015718698502,
+  "conv_in_scale": [
+    0.007874015718698502,
+    0.1462695598602295,
+    0.09969876706600189,
+    0.13491864502429962,
+    0.20006076991558075,
+    0.14492347836494446,
+    0.20579276978969574,
+    0.28044506907463074,
+    0.2536398470401764,
+    0.12262263149023056
+  ],
+  "conv_out_scale": [
+    0.2218114137649536,
+    0.15457597374916077,
+    0.13491864502429962,
+    0.20006076991558075,
+    0.2607537806034088,
+    0.20579276978969574,
+    0.28044506907463074,
+    0.29734617471694946,
+    0.16438166797161102,
+    0.1372978389263153
+  ],
+  "graph": "fuse_bn_into_convs 折叠后抓取(与 ORT 融合图同构); *_out = conv 层输出(pre-ReLU/pre-Pool, = int8 链该层 requant 前的 f32 域); *_in = 下一 conv 输入; 精确关系 in_i = relu((pool_i-1) out_(i-1)) (f32 级)",
+  "layers_table": [
+    {
+      "layer": "conv00",
+      "in_scale": 0.007874015718698502,
+      "out_scale": 0.2218114137649536,
+      "relu_after": true,
+      "pool_after": false,
+      "boundary_ratio_to_next": 1.5164564245418493
+    },
+    {
+      "layer": "conv01",
+      "in_scale": 0.1462695598602295,
+      "out_scale": 0.15457597374916077,
+      "relu_after": true,
+      "pool_after": true,
+      "boundary_ratio_to_next": 1.5504301437030754
+    },
+    {
+      "layer": "conv02",
+      "in_scale": 0.09969876706600189,
+      "out_scale": 0.13491864502429962,
+      "relu_after": true,
+      "pool_after": false,
+      "boundary_ratio_to_next": 1.0
+    },
+    {
+      "layer": "conv03",
+      "in_scale": 0.13491864502429962,
+      "out_scale": 0.20006076991558075,
+      "relu_after": true,
+      "pool_after": true,
+      "boundary_ratio_to_next": 1.0
+    },
+    {
+      "layer": "conv04",
+      "in_scale": 0.20006076991558075,
+      "out_scale": 0.2607537806034088,
+      "relu_after": true,
+      "pool_after": false,
+      "boundary_ratio_to_next": 1.7992514639124377
+    },
+    {
+      "layer": "conv05",
+      "in_scale": 0.14492347836494446,
+      "out_scale": 0.20579276978969574,
+      "relu_after": true,
+      "pool_after": true,
+      "boundary_ratio_to_next": 1.0
+    },
+    {
+      "layer": "conv06",
+      "in_scale": 0.20579276978969574,
+      "out_scale": 0.28044506907463074,
+      "relu_after": true,
+      "pool_after": false,
+      "boundary_ratio_to_next": 1.0
+    },
+    {
+      "layer": "conv07",
+      "in_scale": 0.28044506907463074,
+      "out_scale": 0.29734617471694946,
+      "relu_after": true,
+      "pool_after": true,
+      "boundary_ratio_to_next": 1.1723164880707801
+    },
+    {
+      "layer": "conv08",
+      "in_scale": 0.2536398470401764,
+      "out_scale": 0.16438166797161102,
+      "relu_after": true,
+      "pool_after": false,
+      "boundary_ratio_to_next": 1.3405491790045905
+    },
+    {
+      "layer": "conv09",
+      "in_scale": 0.12262263149023056,
+      "out_scale": 0.1372978389263153,
+      "relu_after": true,
+      "pool_after": true,
+      "boundary_ratio_to_next": null
+    }
+  ],
+  "preprocess": "BILINEAR 缩放到 1024x480, /255 (与 preprocess_spec.json 一致)",
+  "samples": [
+    {
+      "dir": "sample_0_Train_A_0000053",
+      "image": "Train_A_0000053",
+      "logits_f32": [
+        -0.9266066551208496,
+        0.6392852663993835,
+        -0.24216851592063904
+      ],
+      "layers": [
+        {
+          "layer": "conv00",
+          "in_shape": [
+            1,
+            3,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv01",
+          "in_shape": [
+            1,
+            16,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv02",
+          "in_shape": [
+            1,
+            16,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv03",
+          "in_shape": [
+            1,
+            32,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv04",
+          "in_shape": [
+            1,
+            32,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv05",
+          "in_shape": [
+            1,
+            64,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv06",
+          "in_shape": [
+            1,
+            64,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv07",
+          "in_shape": [
+            1,
+            96,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv08",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        },
+        {
+          "layer": "conv09",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        }
+      ]
+    },
+    {
+      "dir": "sample_1_Train_A_0000011",
+      "image": "Train_A_0000011",
+      "logits_f32": [
+        -1.19637131690979,
+        0.8773747682571411,
+        -0.42503345012664795
+      ],
+      "layers": [
+        {
+          "layer": "conv00",
+          "in_shape": [
+            1,
+            3,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv01",
+          "in_shape": [
+            1,
+            16,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv02",
+          "in_shape": [
+            1,
+            16,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv03",
+          "in_shape": [
+            1,
+            32,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv04",
+          "in_shape": [
+            1,
+            32,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv05",
+          "in_shape": [
+            1,
+            64,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv06",
+          "in_shape": [
+            1,
+            64,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv07",
+          "in_shape": [
+            1,
+            96,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv08",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        },
+        {
+          "layer": "conv09",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        }
+      ]
+    },
+    {
+      "dir": "sample_2_Train_A_0001647",
+      "image": "Train_A_0001647",
+      "logits_f32": [
+        -1.2451791763305664,
+        0.6871930360794067,
+        -0.24508541822433472
+      ],
+      "layers": [
+        {
+          "layer": "conv00",
+          "in_shape": [
+            1,
+            3,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv01",
+          "in_shape": [
+            1,
+            16,
+            480,
+            1024
+          ],
+          "out_shape": [
+            1,
+            16,
+            480,
+            1024
+          ]
+        },
+        {
+          "layer": "conv02",
+          "in_shape": [
+            1,
+            16,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv03",
+          "in_shape": [
+            1,
+            32,
+            240,
+            512
+          ],
+          "out_shape": [
+            1,
+            32,
+            240,
+            512
+          ]
+        },
+        {
+          "layer": "conv04",
+          "in_shape": [
+            1,
+            32,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv05",
+          "in_shape": [
+            1,
+            64,
+            120,
+            256
+          ],
+          "out_shape": [
+            1,
+            64,
+            120,
+            256
+          ]
+        },
+        {
+          "layer": "conv06",
+          "in_shape": [
+            1,
+            64,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv07",
+          "in_shape": [
+            1,
+            96,
+            60,
+            128
+          ],
+          "out_shape": [
+            1,
+            96,
+            60,
+            128
+          ]
+        },
+        {
+          "layer": "conv08",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        },
+        {
+          "layer": "conv09",
+          "in_shape": [
+            1,
+            96,
+            30,
+            64
+          ],
+          "out_shape": [
+            1,
+            96,
+            30,
+            64
+          ]
+        }
+      ]
+    }
+  ]
+}

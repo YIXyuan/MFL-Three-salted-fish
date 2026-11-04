@@ -24,7 +24,7 @@ SD 卡图像 ──> ARM 预处理 ──> FPGA 10 层 INT8 卷积 ──> ARM �
 | 子项目 | 职责 | 语言/工具 | 产物 |
 |---|---|---|---|
 | [`MFL_2DCNN`](MFL_2DCNN/README.md) | 数据集预处理、模型训练、INT8 量化、交付物导出 | Python + PyTorch + onnxruntime | `model_int8.onnx`、`quant_params.json`、`weights_int8/*.npy`、逐层测试向量 |
-| [`MFL_FPGA`](MFL_FPGA/MFL_FPGA/README.md) | 10 层 INT8 卷积特征提取引擎（PA 侧） | Verilog + PDS 2025.2 | `AXI_wrapper.sbit` 位流 + `BOOT_PG.bin` 启动镜像 |
+| [`MFL_FPGA`](MFL_FPGA/README.md) | 10 层 INT8 卷积特征提取引擎（PA 侧） | Verilog + PDS 2025.2 | `AXI_wrapper.sbit` 位流 + `BOOT_PG.bin` 启动镜像 |
 | [`MFL_ARM`](MFL_ARM/README.md) | 前半（取图/量化/邮箱驱动/上报）+ 后半（分类头 GAP+FC+softmax） | C（aarch64 静态） | `app_arm` 板端主程序 |
 | [`MFL_Web`](MFL_Web/README.md) | 管网大屏：实时热力图、告警、趋势、历史回看 | Go（纯标准库）/ HTML+JS | `mflweb-linux-arm64` 后端 + 前端页面 |
 | [`Global_Docs`](Global_Docs/BOARD_AUDIT.md) | 板级硬件核查档案（实测经验底稿） | Markdown | `BOARD_AUDIT.md` |
@@ -278,9 +278,9 @@ ssh root@<板IP> "wget -qO- http://127.0.0.1:8080/api/health"
 # 4) tools/check_pa.py 校验打包镜像里的 PA 分区
 ```
 
-细节见 [`MFL_FPGA/MFL_FPGA/README.md`](MFL_FPGA/MFL_FPGA/README.md)。
+细节见 [`MFL_FPGA/README.md`](MFL_FPGA/README.md)。
 
-**现役交付件**（`MFL_FPGA/MFL_FPGA/bitstream/`，可直接上板，不必重建）：
+**现役交付件**（`MFL_FPGA/bitstream/`，可直接上板，不必重建）：
 
 | 文件 | 大小 | md5 |
 |---|---|---|
@@ -311,7 +311,7 @@ ssh root@<板IP> "wget -qO- http://127.0.0.1:8080/api/health"
 ## 9. 已知限制与注意事项
 
 1. **位流只能随 BOOT 镜像加载**（板上无 `fpga_manager`），换位流 = 重打启动镜像 + 重新上电。
-2. **位流必须是启动镜像第 2 分区**，否则会被当成数据段覆盖 BL31/u-boot 暂存区。打包规则见 `MFL_FPGA/MFL_FPGA/board_tools/`。
+2. **位流必须是启动镜像第 2 分区**，否则会被当成数据段覆盖 BL31/u-boot 暂存区。打包规则见 `MFL_FPGA/board_tools/`。
 3. **上电必须先清邮箱**：残留 CTRL/STATUS 会让第一帧直接报 `err`，起跑前写 `CTRL=0`、`STATUS=0`。
 4. **无中断**：PU↔PA 共享窗设备树节点没有 `interrupts` 属性，完成通知靠 1 ms 轮询（对 5+ s/帧的负载开销可忽略）。
 5. **单引擎串行**：FPGA 同一时刻只处理一帧，"乒乓双槽"式提交会被丢弃，ARM 侧必须"提交前排干在跑的槽"。
@@ -326,7 +326,7 @@ ssh root@<板IP> "wget -qO- http://127.0.0.1:8080/api/health"
 | 文档 | 内容 |
 |---|---|
 | [`MFL_2DCNN/README.md`](MFL_2DCNN/README.md) | 数据集与标签口径、训练/量化/导出全流程、模型配比与 BRAM 预算、FAQ |
-| [`MFL_FPGA/MFL_FPGA/README.md`](MFL_FPGA/MFL_FPGA/README.md) | RTL 模块划分、`.mem` 生成、PDS 重建位流、仿真方法、板端复跑 |
+| [`MFL_FPGA/README.md`](MFL_FPGA/README.md) | RTL 模块划分、`.mem` 生成、PDS 重建位流、仿真方法、板端复跑 |
 | [`MFL_ARM/README.md`](MFL_ARM/README.md) | ARM 前半/后半分工、源码与二进制清单、上板命令、权重格式 |
 | [`MFL_ARM/03_docs/FPGA组对接地址表.md`](MFL_ARM/03_docs/FPGA组对接地址表.md) | DDR 轮询邮箱契约（寄存器/地址/状态机/时序）的完整定义 |
 | [`MFL_Web/README.md`](MFL_Web/README.md) | 大屏功能、板端部署、18 个 HTTP 接口、告警规则、离线阈值 |

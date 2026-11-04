@@ -1,0 +1,197 @@
+{
+  "version": "1.3",
+  "board": {
+    "fpga": "紫光同创 PG2K100 (Kosmo-2 SoC)",
+    "pa": {
+      "le": 85760,
+      "lut": 53600,
+      "bram_kb": 632.0,
+      "apm": 256
+    },
+    "pu": "dual Cortex-A53 @1GHz (NEON)",
+    "ddr": "板载 16bit DDR3 (PU 控制器)"
+  },
+  "split": {
+    "fpga_features": "conv00..conv09 (QDQ INT8, 权重片上驻留)",
+    "arm_head": "GAP + fc1 + fc2, 见 head_int8.onnx (输出 3 维严重度)"
+  },
+  "input": {
+    "original_hw": [
+      2400,
+      5000
+    ],
+    "input_hw": [
+      480,
+      1024
+    ],
+    "resize": "PIL bilinear (FPGA 需实现等效插值)",
+    "normalize": "x/255 -> float32 [0,1]",
+    "layout": "NCHW, RGB, 行优先",
+    "input_quant": {
+      "scale": 0.007874015718698502,
+      "zp": 0
+    },
+    "augmentation": "推理侧禁止任何增强(训练增强仅水平翻转/亮度对比度, 不影响部署)"
+  },
+  "layers": [
+    {
+      "layer": "conv00",
+      "in_ch": 3,
+      "out_ch": 16,
+      "kernel": 3,
+      "stride": 1,
+      "params": 432,
+      "int8_kb": 0.4,
+      "out_hw": [
+        480,
+        1024
+      ]
+    },
+    {
+      "layer": "conv01",
+      "in_ch": 16,
+      "out_ch": 16,
+      "kernel": 3,
+      "stride": 1,
+      "params": 2304,
+      "int8_kb": 2.2,
+      "out_hw": [
+        480,
+        1024
+      ]
+    },
+    {
+      "layer": "conv02",
+      "in_ch": 16,
+      "out_ch": 32,
+      "kernel": 3,
+      "stride": 1,
+      "params": 4608,
+      "int8_kb": 4.5,
+      "out_hw": [
+        240,
+        512
+      ]
+    },
+    {
+      "layer": "conv03",
+      "in_ch": 32,
+      "out_ch": 32,
+      "kernel": 3,
+      "stride": 1,
+      "params": 9216,
+      "int8_kb": 9.0,
+      "out_hw": [
+        240,
+        512
+      ]
+    },
+    {
+      "layer": "conv04",
+      "in_ch": 32,
+      "out_ch": 64,
+      "kernel": 3,
+      "stride": 1,
+      "params": 18432,
+      "int8_kb": 18.0,
+      "out_hw": [
+        120,
+        256
+      ]
+    },
+    {
+      "layer": "conv05",
+      "in_ch": 64,
+      "out_ch": 64,
+      "kernel": 3,
+      "stride": 1,
+      "params": 36864,
+      "int8_kb": 36.0,
+      "out_hw": [
+        120,
+        256
+      ]
+    },
+    {
+      "layer": "conv06",
+      "in_ch": 64,
+      "out_ch": 96,
+      "kernel": 3,
+      "stride": 1,
+      "params": 55296,
+      "int8_kb": 54.0,
+      "out_hw": [
+        60,
+        128
+      ]
+    },
+    {
+      "layer": "conv07",
+      "in_ch": 96,
+      "out_ch": 96,
+      "kernel": 3,
+      "stride": 1,
+      "params": 82944,
+      "int8_kb": 81.0,
+      "out_hw": [
+        60,
+        128
+      ]
+    },
+    {
+      "layer": "conv08",
+      "in_ch": 96,
+      "out_ch": 96,
+      "kernel": 3,
+      "stride": 1,
+      "params": 82944,
+      "int8_kb": 81.0,
+      "out_hw": [
+        30,
+        64
+      ]
+    },
+    {
+      "layer": "conv09",
+      "in_ch": 96,
+      "out_ch": 96,
+      "kernel": 3,
+      "stride": 1,
+      "params": 82944,
+      "int8_kb": 81.0,
+      "out_hw": [
+        30,
+        64
+      ]
+    }
+  ],
+  "bram_budget": {
+    "bram_total_kb": 632.0,
+    "dist_ram_kb": 99.1,
+    "conv_weights_int8_kb": 367.2,
+    "conv_bias_int32_kb": 2.4,
+    "line_buffer_layer_max_kb": 48.0,
+    "line_buffer_block_max_kb": 72.0,
+    "line_buffer_3row_all_kb": 297.0,
+    "line_buffer_2row_all_kb": 198.0,
+    "serial_total_kb": 437.5,
+    "fits_serial": true,
+    "block_pipeline_total_kb": 461.5,
+    "fits_block_pipeline": true,
+    "full_pipeline_3row_total_kb": 686.5,
+    "fits_full_pipeline_3row": false,
+    "full_pipeline_2row_total_kb": 587.5,
+    "fits_full_pipeline_2row": true
+  },
+  "dataflow": "逐层串行; 行缓冲流水; INT32 累加; 逐层 requant: y_f = acc32 * (act_in_scale * w_scale[c]); y_i8 = clamp(round(y_f / act_out_scale), -128, 127)",
+  "weight_streaming_alternative": "若改用 [32,64,128,256,512](4.4MB), 片上放不下, 需 PA 经 AXI 从 DDR3 双缓冲流送权重, 算力/带宽另评",
+  "deliverables": [
+    "model_int8.onnx",
+    "head_int8.onnx",
+    "quant_params.json",
+    "quant_params_table.md",
+    "weights_int8/",
+    "preprocess_spec.json",
+    "test_vectors/"
+  ]
+}

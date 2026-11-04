@@ -31,13 +31,11 @@ tools/        仿真包装 run_sim.py、各向量/ROM 生成器（gen_m7_wram / 
 board_tools/  板端工具源码（免 libc，静态 aarch64）：m9_full（probe/boot/full/
               dual/export/dump/softreset）、mbox_gate_test、bist_check、
               BOOT 打包单 .icf ×3
-docs/         HANDOFF.md（工程全史/坑清单，**先读这个**）、上板指南、P&R 指南、
-              各模块代码说明.txt、金标准口径.md
 bitstream/    当前生产位流 AXI_wrapper.sbit（md5 1a1847ed…）与启动镜像
               BOOT_PG.bin（18,286,592 B，PA 分区 @0x1B800）
 ```
 
-各模块职责速览见 `docs/各模块代码说明.txt`；数据通路与邮箱协议见 `docs/HANDOFF.md` §5。
+各模块职责见 `rtl/` 各文件的头部注释（模块按 M1…M9 编号）；数据通路、邮箱协议与 DDR 布局见仓库根 `README.md` §2、§6。
 
 ## 重建位流（PDS 2025.2-ads，器件 PG2K100-6IMBG400）
 
@@ -47,7 +45,7 @@ bitstream/    当前生产位流 AXI_wrapper.sbit（md5 1a1847ed…）与启动�
 2. 约束用 `project/Kosmo2_mfl_cnn_accel.fdc`（sys_clk 20 ns + `create_generated_clock
    pll_clk_50m`，缺这条 PLL 会被推断成 1 MHz 假绿）；
 3. 跑 `compile → synthesize → dev_map → place → route → route_optimize →
-   report_timing → gen_bit_stream`，检查点见 `docs/doc/完整 M9 top 的 P&R操作指南.md`；
+   report_timing → gen_bit_stream`，检查点见仓库根 `README.md` §7.4 与 `bitstream/README.md` 里的 P&R 签核记录；
 4. 生成位流后用 `tools/check_pa.py` 校验打包镜像里的 PA 分区（`board_tools/*.icf` +
    booter.exe 打 BOOT_PG.bin）。
 
@@ -55,12 +53,12 @@ bitstream/    当前生产位流 AXI_wrapper.sbit（md5 1a1847ed…）与启动�
 
 ```bash
 python tools/run_sim.py --ip ip/kosmo2_m9_top --with ip/kosmo2_ctrl_fsm ... --do sim_m9_top.do
-# 完整命令（含依赖注入）见 docs/HANDOFF.md §7；TB 打印 TB PASS 才算过
+# TB 打印 TB PASS 才算过；依赖注入等选项见 python tools/run_sim.py --help
 ```
 
 说明：本仓库 `sim/` 是从开发工作区各 IP 收集的**扁平副本**（TB + 模型 + 脚本）；
 `run_sim.py` 按工作区布局（`ip/<名>/{rtl,sim,mem}`）取文件，跑仿真时把本仓库内容映射回
-该布局，或直接按 HANDOFF §7 在开发工作区执行。大向量（满尺寸 in/exp hex，3 MB/份）
+该布局，或按 `run_sim.py --help` 给出的布局参数直接执行。大向量（满尺寸 in/exp hex，3 MB/份）
 不入库，先跑生成器：`gen_m7_wram.py`（权重 ROM）→ `gen_m8_cfg.py`（层配置）→
 `gen_m9_full_vec.py`（满尺寸金标准，`--sample/--out-dir` 可换样本）。
 
@@ -73,5 +71,5 @@ aarch64-none-elf-gcc -nostdlib -static -ffreestanding -O2 -Wl,-e,_start -o m9_fu
 ./m9_full full m9_in_sample0.bin m9_exp_sample0.bin
 ```
 
-上电顺序、LED 语义、双帧/软复位/批量操作详见 `docs/doc/完整M9_top_上板Bring-up指南_50MHz.md`。
+上电顺序与 LED 语义见仓库根 `README.md` §4.1、§9；双帧/软复位/批量操作见 `board_tools/README_Toolsuse.md`。
 

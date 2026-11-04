@@ -1,0 +1,9 @@
+torch>=2.0            # Windows 必须从 CUDA 源安装, 见 README: --index-url https://download.pytorch.org/whl/cu128
+numpy
+pillow
+pandas
+openpyxl
+matplotlib
+onnx>=1.14
+onnxruntime>=1.16
+tqdm

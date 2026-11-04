@@ -1,7 +1,7 @@
 # MFL_ARM —— ARM 前半 + 后半 融合包
 
 > 范围: MFL 边缘监测系统 PU(A53) 侧全部 ARM 软件 = **前半（图片→FPGA）+ 后半（分类头→上报）**
-> 位流: v3.2（VERSION=0x20261018）｜ 邮箱契约: 见根目录《FPGA组对接地址表.md》
+> 位流: v3.2（VERSION=0x20261018）｜ 邮箱契约: 见03_docs\《FPGA组对接地址表.md》
 
 ## 0. 全链数据流（两半如何协作）
 
@@ -22,18 +22,17 @@ Web 大屏 (mflweb, :8080): 状态/趋势/告警
 
 ```
 MFL_ARM/
-├── FPGA组对接地址表.md        v3.2 DDR 轮询邮箱契约（寄存器/地址/状态机/时序）
 ├── 01_frontend/               ★ ARM 前半
 │   ├── 01_arm_source/         完整源码: main.c / preprocess.c·h / fpga_if.c·h / fpga_regs.h /
 │   │   │                      report.c·h / head.c·h(前半集成版) / head_params.h·json / stb_image.h /
-│   │   │                      Makefile（源码已去注释）
+│   │   │                      Makefile
 │   │   ├── fpga_mem/          FPGA 权重与配置: weights·bias·mc·layer_config·boundary.mem
 │   │   ├── weights/           mfl_head.bin（app_arm 加载的头权重, md5 e7c3b41c）
 │   │   ├── tests/             test_head / test_preprocess + 测试图与期望值
 │   │   └── tools/             gen_fpga_mem / gen_head_assets / head_ref_check（生成与对拍脚本）
-│   ├── 03_board_binaries/     板端静态二进制: app_arm（主程序, 内嵌分类头）/ pretest_arm /
+│   ├── 02_board_binaries/     板端静态二进制: app_arm（主程序, 内嵌分类头）/ pretest_arm /
 │   │                          headtest_arm / mfl_fill·mfl_dump·mfl_peek·mfl_reg_test（寄存器工具）
-│   └── 04_assets/             golden 特征图: golden_conv09_prepool_0x2FF.bin（跳池化 30×64）/
+│   └── 03_assets/             golden 特征图: golden_conv09_prepool_0x2FF.bin（跳池化 30×64）/
 │                              golden_feat_full_0xFF.bin（全链 15×32）/ preprocess_spec.json
 ├── 02_backend/                ★ ARM 后半 = 分类头
 │   ├── 01_models/             model_int8.onnx（参数权威, md5 ab31e3fd）/ model_fp32_fused.onnx /
@@ -50,6 +49,8 @@ MFL_ARM/
 │   │                          state_100.json（上报后 Web 状态快照）
 │   └── 05_build/              linux-arm64/(test_head·test_head_qdq·head_cli·test_service·dump_out)
 │                              windows/(4 个 PC exe: test_head·test_head_qdq·head_cli·test_service)
+├── 03_docs/                   ★ ARM 文档
+│   └── FPGA组对接地址表.md     v3.2 DDR 轮询邮箱契约（寄存器/地址/状态机/时序）
 └── README.md
 ```
 
@@ -71,8 +72,8 @@ MFL_ARM/
 2. 类别 0/1/2 = 无腐蚀/轻度/重度 = Web severity。
 3. 邮箱 0x301000 为 DDR 轮询邮箱；VERSION 在首帧 START 后才写入（0x20261018）。
 4. 实测性能：100 张全流程 593.2s（5.93s/帧），瓶颈在 FPGA（5.77s/帧）。
-5. 参数权威是 `model_int8.onnx`；`head_int8.onnx` 因中间 requant scale 过期不可用（已不在包内）。
-6. 源码中的板卡/VM 密码已替换为 `<BOARD_PWD>`/`<VM_PWD>` 占位；全部源码已去注释。
+5. 参数权威是 `model_int8.onnx`；`head_int8.onnx` 因中间 requant scale 过期不可用。
+6. 源码中的板卡/VM 密码占位为 `<BOARD_PWD>`/`<VM_PWD>`。
 
 ## 4. 快速上板
 
@@ -90,8 +91,9 @@ wget -qO- http://127.0.0.1:8080/api/state
 
 ## 5. 重新生成 FPGA 权重 mem（可选）
 
+由模型侧操作：
 `tools/gen_fpga_mem.py` 从 `weights_int8/conv*_int8.npy` 生成 `fpga_mem/weights.mem`。
-包内未携带 npy 中间产物（20 个文件），需要再生时先从 `02_backend/01_models/model_int8.onnx`
+包内未携带 npy 中间产物，需要再生时先从 `02_backend/01_models/model_int8.onnx`
 导出各层 int8 权重/偏置为 npy（`03_code/python/gen_c_params.py` 有现成的 ONNX 初始化器读取逻辑），
 再运行：
 

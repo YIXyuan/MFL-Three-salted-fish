@@ -13,7 +13,7 @@
 //   T3  抽查: convXX_spot.hex 的 16 个 (t,c) 由生成器直接按 npy 原始下标算出,
 //       TB 重新寻址该列并比对（独立于列变换路径）
 //   T4  M6 联仿: 真实 conv00/conv01 patch 经 M7 ROM -> M6 卷积引擎 -> NCHW 输出,
-//       逐字节对拍（验证 HANDOFF §5.6 接口在实际链路上的时序）
+//       逐字节对拍（验证 WRAM 接口在实际链路上的时序）
 //
 //   向量/初始化文件由 tools/gen_m7_wram.py 生成（禁止手抄）
 //   运行: python tools/run_sim.py --ip ip/kosmo2_wram_bank

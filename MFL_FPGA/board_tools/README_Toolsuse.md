@@ -4,7 +4,7 @@
 
 | 工具 | 用法 | 说明 |
 |---|---|---|
-| `m9_full` | `probe` / `boot` / `full <in.bin> [exp.bin] [out.bin]` / `dual <inA> <expA> <inB> [expB]` / `dump <off_hex> <len> <out.bin>` / `softreset` / `export N <in.bin> <scratch>` | 主工具，免 libc（raw syscall + /dev/uio0 mmap）。`full` = 写 IN→LAYER=0xFF→START→轮询→46,080 B 对拍（实测 5761 ms）；`dual` = in-flight 2 / 1 深 pending（A/B 各自对拍、hold 500 ms）；`export N` = 逐层 pre-ReLU 导出（V2 用，注意该路径 bug 见 HANDOFF §6.6） |
+| `m9_full` | `probe` / `boot` / `full <in.bin> [exp.bin] [out.bin]` / `dual <inA> <expA> <inB> [expB]` / `dump <off_hex> <len> <out.bin>` / `softreset` / `export N <in.bin> <scratch>` | 主工具，免 libc（raw syscall + /dev/uio0 mmap）。`full` = 写 IN→LAYER=0xFF→START→轮询→46,080 B 对拍（实测 5761 ms）；`dual` = in-flight 2 / 1 深 pending（A/B 各自对拍、hold 500 ms）；`export N` = 逐层 pre-ReLU 导出（仅用于结构对齐：该路径会把负值压成 `0x80`，不能当数值基准） |
 | `mbox_gate_test` | 直接跑 | dump 邮箱 8 字 → 写有效 IN/OUT → 200 ms 后复查 VERSION/STATUS（开锁判据） |
 | `bist_check` | 直接跑 | CPU 侧逐拍核对 0xC80000 的 64 KiB BIST 图案（seed=0xbeef1234） |
 | `m9_bringup.c` | 交叉编译备用（Linaro `-static`） | 与 m9_full 同功能的前身，板上未部署 |
