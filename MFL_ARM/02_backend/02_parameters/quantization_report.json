@@ -1,0 +1,50 @@
+{
+  "n_verify": 300,
+  "verify_source": "val-cache",
+  "max_abs_logit_diff": 2.52455,
+  "argmax_agree": 0.96667,
+  "subset_accuracy": {
+    "fp32": 0.5467,
+    "int8": 0.5567
+  },
+  "calibration": {
+    "method": "Entropy",
+    "samples": 2048,
+    "pool": "train",
+    "percentile": null,
+    "op_types": [
+      "Conv",
+      "Gemm",
+      "MatMul"
+    ]
+  },
+  "baseline_before_T1": {
+    "quantization_report_argmax_agree_64_trainpool": 0.953125,
+    "compare_int8_test3000_argmax_agree": 0.951,
+    "spotcheck_26img_agree": "9/26 (hi_conf_flips=12, 全 severity-0 桶)",
+    "acceptance": "compare_int8 --split test --n 3000 argmax_agree >= 0.98"
+  },
+  "sizes_kb": {
+    "fp32_fused_onnx": 1577.1,
+    "int8_onnx": 436.6,
+    "conv_weights_int8": 367.2
+  },
+  "bram_budget": {
+    "bram_total_kb": 632.0,
+    "dist_ram_kb": 99.1,
+    "conv_weights_int8_kb": 367.2,
+    "conv_bias_int32_kb": 2.4,
+    "line_buffer_layer_max_kb": 48.0,
+    "line_buffer_block_max_kb": 72.0,
+    "line_buffer_3row_all_kb": 297.0,
+    "line_buffer_2row_all_kb": 198.0,
+    "serial_total_kb": 437.5,
+    "fits_serial": true,
+    "block_pipeline_total_kb": 461.5,
+    "fits_block_pipeline": true,
+    "full_pipeline_3row_total_kb": 686.5,
+    "fits_full_pipeline_3row": false,
+    "full_pipeline_2row_total_kb": 587.5,
+    "fits_full_pipeline_2row": true
+  }
+}
